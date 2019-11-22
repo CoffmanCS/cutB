@@ -1,10 +1,12 @@
 #Drew Arocha 2019
-#cutB version 1.01
+#cutB version 1.02
 import socket
 from _thread import *
 import sys
 import pickle
 import random
+import select
+import time
 
 server = socket.gethostname()
 #'10.84.129.230' 
@@ -13,7 +15,6 @@ port = 1234
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 try:
     s.bind((server, port))
 except socket.error as e:
@@ -23,6 +24,7 @@ def get_dict():
     f = b''
     msg = c.recv(2048)
     f += msg
+    print('got it!')
     return pickle.loads(f) 
 
 def update_clients(dict):
@@ -32,7 +34,7 @@ def update_clients(dict):
     print(clients)
 
 def send_clients(dict):
-    data = pickle.dumps(clients)
+    data = pickle.dumps(dict)
     c.sendall(data)
 
 
@@ -44,7 +46,7 @@ def update_pos():
     send_clients(clients)
     print(clients)
 
-def game_thread(c, player):
+def game_thread(c):
     while True:
         try:
             send_clients(clients)
@@ -59,6 +61,7 @@ while True:
     c, addr = s.accept()
     print("Connected to:", addr)
     update_clients(clients)
-    start_new_thread(game_thread,(c, currentPlayer))
+    print('here')
+    start_new_thread(game_thread,(c,))
     print(clients)
     currentPlayer += 1
