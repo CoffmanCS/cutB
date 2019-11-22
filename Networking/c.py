@@ -1,9 +1,12 @@
 #Drew Arocha 2019
-#cutB version 1.01
+#cutB version 1.02
 import pygame
 import socket
 import pickle
-
+from threading import Thread
+import errno
+import sys
+import time
 #setting up the client side socket with IPV4
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = socket.gethostname()
@@ -20,16 +23,21 @@ clientNum = 0
 def connect():
         try:
             s.connect((host, port))
-            return s.client.recv(2048).decode()
         except:
             pass
-
 #Recieves the dict
 def get_dict():     
     f = b''
-    msg = s.recv(2048)
-    f += msg
-    return pickle.loads(f) 
+    try:
+
+        msg = s.recv(2048)
+        f += msg
+        print('got from client', pickle.loads(f))
+        return pickle.loads(f) 
+
+
+    except EOFError as e:
+        return {}
 
 class Player():
     def __init__(self, x, y, width, height, color):
@@ -60,15 +68,13 @@ def redrawWindow(window, player, player2):
 d = {}
 key = len(d) 
 def make_pos(dict):
-    print(dict)
     d.update(dict)
     print(d)
-    print(d.get(len(d)-1))
-    
+
 def send_pos(dict):
     data = pickle.dumps(dict)
-    s.send(data)
-
+    s.sendall(data)
+    print('sent!')
 
 def main():
     run = True
@@ -76,21 +82,32 @@ def main():
     p2 = Player(0,0,100,100,(0,0,255))
     connect()
     d = get_dict()
-    make_pos(d)
+    print(d)
+
     while run:
+        #Sets up blocking &updates the dict
+        try:
+            s.setblocking(False)
+            d.update(get_dict())
+        except socket.error as e:   #can throw an error so we check for that
+            if e == "[Errno 35] Resource temporarily unavailable":
+                time.sleep(0)
+                continue
+                raise e
+
+        make_pos(d)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
-            
+                
             if event.type == pygame.MOUSEBUTTONDOWN:
                 p.move()
                 d.update({len(d)-1: pygame.mouse.get_pos()})
                 send_pos(d)
-                print(d)
-                print(pygame.mouse.get_pos())
 
 
         redrawWindow(window, p, p2)
+
 
 main()
